@@ -195,16 +195,40 @@ class Scheduler extends EventEmitter {
   snapshot() {
     const cfg = this.store.getConfig();
     const result = this.lastResult;
-    const items = result ? result.items.slice(0, cfg.maxItems) : [];
     const readSet = this.store.getReadSet();
+    const favorites = this.store.getFavorites();
+
+    // items 会按 maxItems 截断，但收藏必须始终可访问：
+    // 一条内容被收藏后仍可能落到截断之外（或被 21 天时效过滤），
+    // 若只发截断后的 items，界面就会出现「收藏计数有、列表却是空的」。
+    // 因此这里把不在 items 里的收藏补回快照。
+    const items = result ? result.items.slice(0, cfg.maxItems) : [];
+    const presentIds = new Set(items.map((i) => i.id));
+    const orphanFavorites = favorites
+      .filter((f) => f && f.id && !presentIds.has(f.id))
+      .map((f) => ({
+        ...f,
+        // 收藏快照只存了保存时间；没有发布时间就退回用它，避免排序时沉底
+        publishedAt: f.publishedAt || f.savedAt || null,
+        tags: Array.isArray(f.tags) ? f.tags : [],
+        points: null,
+        comments: null
+      }));
 
     return {
-      items: items.map((item) => ({
-        ...item,
-        read: readSet.has(item.id),
-        favorite: this.store.isFavorite(item.id)
-      })),
-      favorites: this.store.getFavorites(),
+      items: [
+        ...items.map((item) => ({
+          ...item,
+          read: readSet.has(item.id),
+          favorite: this.store.isFavorite(item.id)
+        })),
+        ...orphanFavorites.map((f) => ({
+          ...f,
+          read: readSet.has(f.id),
+          favorite: true
+        }))
+      ],
+      favorites,
       statuses: result ? result.statuses : [],
       fetchedAt: result ? result.fetchedAt : null,
       durationMs: result ? result.durationMs : 0,

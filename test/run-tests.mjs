@@ -18,6 +18,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
 
 const parser = require(path.join(root, 'src/main/parser.js'));
+const { Scheduler } = require(path.join(root, 'src/main/scheduler.js'));
 const { SOURCES, matchesAiKeywords } = require(path.join(root, 'src/main/sources.js'));
 const { fetchAll, normalizeTitle } = require(path.join(root, 'src/main/aggregator.js'));
 const { Store } = require(path.join(root, 'src/main/store.js'));
@@ -203,6 +204,80 @@ const infoqItem = parser.normalizeItem(
 );
 check('InfoQ 类占位摘要被清空', infoqItem.summary === '', JSON.stringify(infoqItem.summary));
 check('InfoQ 标题仍然保留', infoqItem.title.includes('Meta'), infoqItem.title);
+
+section('收藏不因掉出抓取列表而丢失');
+
+// 回归测试：曾经出现「侧栏显示收藏 1 条，点进去却空」的问题。
+// 根因是快照的 items 会按 maxItems 截断、且有时效过滤，而收藏是独立持久化的，
+// 一条内容被收藏后仍可能不在 items 里。快照必须把这类收藏补回来。
+{
+  const favStore = new Store(path.join(root, '.tmp-test-fav')).load();
+  const orphan = {
+    id: 'fav_orphan_1',
+    title: '一条已被收藏但早已掉出抓取列表的内容',
+    link: 'https://example.com/old/1',
+    summary: '很久以前的文章',
+    sourceId: 'qbitai',
+    sourceName: '量子位',
+    category: 'cn',
+    lang: 'zh',
+    publishedAt: '2026-01-01T00:00:00.000Z',
+    savedAt: '2026-01-02T00:00:00.000Z'
+  };
+  favStore.toggleFavorite(orphan);
+
+  const sched = new Scheduler(favStore);
+  sched.lastResult = {
+    items: [
+      {
+        id: 'normal_1',
+        title: '当前列表里的普通条目',
+        link: 'https://example.com/new/1',
+        summary: '',
+        sourceId: 'qbitai',
+        sourceName: '量子位',
+        category: 'cn',
+        lang: 'zh',
+        publishedAt: '2026-09-15T00:00:00.000Z'
+      }
+    ],
+    statuses: [],
+    fetchedAt: '2026-09-15T00:00:00.000Z',
+    durationMs: 0,
+    totalRaw: 1,
+    fromCache: false
+  };
+
+  const snap = sched.snapshot();
+  const ids = snap.items.map((i) => i.id);
+  check('收藏计数为 1', snap.favorites.length === 1, String(snap.favorites.length));
+  check('收藏条目被补进快照 items', ids.includes('fav_orphan_1'), JSON.stringify(ids));
+  check(
+    '补进来的收藏带有 favorite 标记',
+    snap.items.find((i) => i.id === 'fav_orphan_1').favorite === true
+  );
+  check(
+    '补进来的收藏有可用于排序的时间',
+    Boolean(snap.items.find((i) => i.id === 'fav_orphan_1').publishedAt)
+  );
+  check('原有条目未被破坏', ids.includes('normal_1'));
+
+  // 取消收藏后不应再被补进来
+  favStore.toggleFavorite(orphan);
+  const snap2 = sched.snapshot();
+  check(
+    '取消收藏后不再出现',
+    !snap2.items.map((i) => i.id).includes('fav_orphan_1'),
+    JSON.stringify(snap2.items.map((i) => i.id))
+  );
+
+  try {
+    const fsx = await import('node:fs');
+    fsx.rmSync(path.join(root, '.tmp-test-fav'), { recursive: true, force: true });
+  } catch {
+    /* 忽略清理失败 */
+  }
+}
 
 section('URL 归一化与去重');
 

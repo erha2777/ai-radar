@@ -202,12 +202,47 @@ function matchFollowKeywords(item, keywords) {
   return keywords.some((k) => haystack.includes(String(k).toLowerCase()));
 }
 
+/**
+ * 把收藏数据补进当前条目列表。
+ *
+ * 为什么需要：收藏是主进程单独持久化的快照（snapshot.favorites），生命周期比
+ * 抓取列表长。一条内容被收藏后，仍可能从 snapshot.items 里消失——超出保留时效、
+ * 被 maxItems 截断、或该数据源被停用。此时若只看 items，就会出现
+ * 「侧栏显示收藏 1 条、点进去却是空的」。这里用收藏快照兜底。
+ *
+ * @param {Array} items 当前的 snapshot.items
+ * @returns {Array} 合并后的列表（含已不在 items 里的收藏）
+ */
+function withFavorites(items) {
+  const list = Array.isArray(items) ? items : [];
+  const favorites = state.snapshot.favorites || [];
+  if (!favorites.length) return list;
+
+  const have = new Set(list.map((i) => i.id));
+  const recovered = [];
+  for (const fav of favorites) {
+    if (!fav || !fav.id || have.has(fav.id)) continue;
+    recovered.push({
+      ...fav,
+      // 收藏快照只存了保存时间，没有发布时间就退回用它排序，避免沉底
+      publishedAt: fav.publishedAt || fav.savedAt || null,
+      favorite: true,
+      read: false,
+      tags: Array.isArray(fav.tags) ? fav.tags : [],
+      points: null
+    });
+  }
+  return recovered.length ? [...list, ...recovered] : list;
+}
+
 function visibleItems() {
   const cfg = state.snapshot.config || {};
   const followKeywords = cfg.keywords || [];
   const ui = state.ui;
+  // 收藏视图下并入收藏快照，保证收藏过就一定看得到
+  const source = ui.category === 'favorites' ? withFavorites(state.snapshot.items) : state.snapshot.items;
 
-  let list = state.snapshot.items.filter((item) => {
+  let list = source.filter((item) => {
     if (!matchCategory(item, ui.category)) return false;
     if (ui.unreadOnly && item.read) return false;
     if (ui.keywordOnly && !matchFollowKeywords(item, followKeywords)) return false;

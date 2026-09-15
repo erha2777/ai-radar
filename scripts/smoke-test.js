@@ -105,9 +105,26 @@ child.on('exit', (code, signal) => {
         }
         if (e.favorite) {
           const f = e.favorite;
-          const ok = f.after === f.before + 1 && f.starOn === true && f.cleaned === f.before;
+          const ok = f.after === f.before + 1 && f.starOn === true;
+          console.log(`  ${mark(ok)} 收藏: 计数 ${f.before} → ${f.after}，按钮点亮=${f.starOn}`);
+        }
+        if (e.favoriteView) {
+          const v = e.favoriteView;
+          // 关键校验：侧栏计数 > 0 时，收藏视图里必须真的有卡片 —— 回归
+          // 「显示收藏 1 条、点进去却是空的」
+          const ok = Number(v.badge) > 0 && v.cardCount > 0 && !v.emptyVisible;
           console.log(
-            `  ${mark(ok)} 收藏: 计数 ${f.before} → ${f.after}，按钮点亮=${f.starOn}，取消后回到 ${f.cleaned}`
+            `  ${mark(ok)} 收藏视图: 计数=${v.badge} 卡片数=${v.cardCount} 空状态=${v.emptyVisible}` +
+              (v.firstTitle ? `  首条=${v.firstTitle}` : '')
+          );
+        }
+        if (e.favoriteCleanup) {
+          const c = e.favoriteCleanup;
+          // 用相对变化判断：userData 里可能还有用户自己先前收藏的条目
+          const ok = c.afterCount === c.beforeCount - 1 && c.stillPresent === false;
+          console.log(
+            `  ${mark(ok)} 取消收藏: 计数 ${c.beforeCount} → ${c.afterCount}，` +
+              `该条目仍在收藏视图=${c.stillPresent}（视图内共 ${c.cardsInFavView} 条）`
           );
         }
         if (e.sort) {

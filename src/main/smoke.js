@@ -238,16 +238,59 @@ function install({ app, window, scheduler, store }) {
         const after = parseInt(document.getElementById('favCount')?.textContent || '0', 10);
         const card = document.querySelector('#feed .card[data-id="' + id + '"]');
         const starOn = card ? card.querySelector('.act--star')?.classList.contains('is-on') : null;
-        // 清理：再点一次取消收藏，避免污染后续状态
-        card?.querySelector('[data-action="star"]')?.click();
-        setTimeout(() => {
-          const cleaned = parseInt(document.getElementById('favCount')?.textContent || '0', 10);
-          resolve({ before, after, starOn, cleaned, id });
-        }, 400);
-      }, 400));
+        resolve({ before, after, starOn, id });
+      }, 500));
+    })()`);
+    // 5) 收藏视图：切到「我的收藏」应能看到刚收藏的条目
+    //    回归「侧栏显示收藏 N 条、点进去却是空的」这个问题
+    results.favoriteView = await probe(`(() => {
+      document.getElementById('btnFavorites')?.click();
+      return new Promise((resolve) => setTimeout(() => {
+        const cards = Array.from(document.querySelectorAll('#feed .card'));
+        const badge = document.getElementById('favCount')?.textContent || '0';
+        const emptyVisible = !(document.getElementById('emptyState')?.hidden ?? true);
+        const emptyTitle = document.getElementById('emptyTitle')?.textContent || '';
+        const firstTitle = cards.length ? (cards[0].querySelector('.card__title')?.textContent || '').slice(0, 40) : '';
+        // 回到全部视图，避免影响后续检查
+        document.getElementById('btnShowAll')?.click();
+        setTimeout(() => resolve({
+          badge,
+          cardCount: cards.length,
+          emptyVisible,
+          emptyTitle,
+          firstTitle
+        }), 400);
+      }, 600));
     })()`);
 
-    // 5) 排序切换
+    // 6) 清理收藏：取消后再进收藏视图，该条目应消失
+    //    注意用「相对变化」判断，不能用绝对值为 0 —— userData 里可能有用户
+    //    自己先前收藏的条目，绝对断言会误报失败。
+    results.favoriteCleanup = await probe(`(() => {
+      const beforeCount = parseInt(document.getElementById('favCount')?.textContent || '0', 10);
+      const beforeCards = document.querySelectorAll('#feed .card .act--star.is-on').length;
+      const star = document.querySelector('#feed .card .act--star.is-on');
+      const id = star?.closest('.card')?.dataset.id;
+      star?.click();
+      return new Promise((resolve) => setTimeout(() => {
+        const afterCount = parseInt(document.getElementById('favCount')?.textContent || '0', 10);
+        document.getElementById('btnFavorites')?.click();
+        setTimeout(() => {
+          const cardIds = Array.from(document.querySelectorAll('#feed .card')).map(c => c.dataset.id);
+          document.getElementById('btnShowAll')?.click();
+          setTimeout(() => resolve({
+            beforeCount,
+            afterCount,
+            beforeCards,
+            removedId: id,
+            stillPresent: cardIds.includes(id),
+            cardsInFavView: cardIds.length
+          }), 350);
+        }, 500);
+      }, 500));
+    })()`);
+
+    // 7) 排序切换
     results.sort = await probe(`(() => {
       const before = document.querySelectorAll('#feed .card').length;
       document.querySelector('[data-sort="hot"]')?.click();

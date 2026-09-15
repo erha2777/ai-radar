@@ -179,15 +179,21 @@ npm run build         # 打包出 Windows 安装包与免安装版
 npm run build:force   # 同上，但先自动结束正在运行的应用实例
 ```
 
-**打包前请先退出正在运行的 AI Radar**。应用运行时会锁定 `dist` 目录里的 exe 与
-`app.asar`，此时打包会失败并报出难以理解的底层错误（`Access is denied` /
-`ERR_ELECTRON_BUILDER_CANNOT_EXECUTE`）。`npm run build` 会先做前置检查，检测到实例
-在运行就给出明确提示；`npm run build:force` 则会自动结束这些进程后继续。
+**打包前请先退出正在运行的 AI Radar**。应用运行时会锁住 `dist` 里的 `app.asar` 与 exe，
+此时打包会失败并报出难以理解的底层错误（`The process cannot access the file` /
+`ERR_ELECTRON_BUILDER_CANNOT_EXECUTE`）。
 
-> 前置检查的判据基于**纯 ASCII 的路径片段**（`\node_modules\electron\dist\electron.exe`
-> 与 `\dist\win-unpacked\`），而不是项目路径或应用名。原因是 PowerShell 5.1 默认按系统
-> OEM 代码页编码管道输出、而 Node 按 UTF-8 解码，中文路径读回来会变成乱码，任何路径前缀
-> 比较都会失效；同时也保证将来把应用改成中文名后检查依然有效。
+`npm run build` 会先做前置检查。**检查方式是直接尝试给 `dist` 目录改名**——这正是打包
+真正需要的条件（能清空输出目录），由文件系统给出确定答案。之所以不用"枚举进程"判断：
+`Get-Process` 读某些进程的 `.Path` 会因权限不足返回空并被静默跳过，导致漏判
+（本项目早期版本就因此误报过「未检测到运行中的实例」）。
+
+遇到占用时按这个顺序处理：
+
+1. **退出应用** —— 它在托盘里，右键托盘图标选「退出」；**只关窗口没用**（默认最小化到托盘）
+2. `npm run build:force` —— 自动结束相关进程后重试
+3. 仍失败则重启电脑 —— 进程已退出但句柄未释放是 Windows 上内存映射文件的常见行为；
+   也可能是杀毒软件 / 同步盘正在扫描该目录
 
 `npm run test:live` 会逐个打印每个源的抓取条数与耗时，便于快速发现某个源失效。
 

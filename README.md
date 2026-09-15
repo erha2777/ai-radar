@@ -193,6 +193,24 @@ git push origin v1.0.1
 
 版本号需要与 `package.json` 的 `version` 保持一致，否则产物文件名会与标签不符。
 
+### 设置仓库简介与主题标签
+
+仓库的 description 与 topics 只能通过 GitHub API 修改。本机 Node 的 TLS 无法直连
+`api.github.com`（握手被重置），所以用 `gh` CLI —— 它走 Windows 原生网络栈，可直连官方 API：
+
+```bash
+# 1. 安装 gh（已安装可跳过）
+winget install GitHub.cli
+
+# 2. 设置细粒度 token（权限：Administration → Read and write）
+$env:GH_TOKEN = "github_pat_xxx"
+
+# 3. 写入简介与 topics
+node scripts/set-repo-meta.mjs
+```
+
+凭据只从环境变量读取，不写入命令行历史或任何文件；脚本会在写入后回读校验。
+
 ### 当前测试状态
 
 ```

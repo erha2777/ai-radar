@@ -1,6 +1,9 @@
 # AI Radar — AI 实时资讯雷达
 
-一个 Windows 桌面应用，持续聚合 **14 个** AI 相关数据源（论文 / 国内资讯 / 海外资讯 / 社区热议 / 开源项目），
+[![Build & Release](https://github.com/erha2777/ai-radar/actions/workflows/build.yml/badge.svg)](https://github.com/erha2777/ai-radar/actions/workflows/build.yml)
+[![Release](https://img.shields.io/github/v/release/erha2777/ai-radar?display_name=tag)](https://github.com/erha2777/ai-radar/releases/latest)
+
+一个 Windows 桌面应用，持续聚合 **13 个** AI 相关数据源（论文 / 国内资讯 / 海外资讯 / 社区热议 / 开源项目），
 有新内容时推送系统通知，支持分类筛选、关键词关注、搜索、已读与收藏。
 
 界面为深色主题，自绘标题栏，常驻系统托盘。
@@ -9,13 +12,16 @@
 
 ## 一、快速开始
 
-### 方式 A：直接运行打包好的程序（推荐）
+### 方式 A：下载打包好的程序（推荐）
 
-双击 `dist/AI Radar Setup 1.0.0.exe` 安装，或直接运行免安装版：
+到 [Releases](https://github.com/erha2777/ai-radar/releases/latest) 下载：
 
-```
-dist/AI-Radar-1.0.0-portable.exe
-```
+- **`AI-Radar-1.0.0-portable.exe`** — 免安装版，双击即用
+- **`AI Radar Setup 1.0.0.exe`** — 安装版，可选安装目录、创建桌面快捷方式
+
+> 未做代码签名，Windows SmartScreen 可能提示「未知发布者」，点「更多信息 → 仍要运行」即可。
+>
+> 发布包由 GitHub Actions 在推送 `v*` 标签时自动构建，流程见 `.github/workflows/build.yml`。
 
 ### 方式 B：从源码运行
 
@@ -140,7 +146,8 @@ project/
 │  ├─ make-icons.js           # 零依赖生成 PNG 图标
 │  ├─ png.js                  # PNG 编码器
 │  └─ smoke-test.js           # 启动应用并采集截图与报告
-└─ test/run-tests.mjs         # 单元测试 + 真实数据源实测
+├─ test/run-tests.mjs         # 单元测试 + 真实数据源实测
+└─ .github/workflows/build.yml # 推送 v* 标签时自动构建并发布 Release
 ```
 
 ### 架构要点
@@ -158,7 +165,7 @@ project/
 
 ```bash
 npm test              # 离线单元测试（解析器 / 去重 / 摘要识别 / 配置存储）
-npm run test:live     # 额外实测全部 14 个真实数据源
+npm run test:live     # 额外实测全部真实数据源
 npm run smoke         # 启动应用，抓取完成后自动截图 + 输出诊断报告到 .smoke/
 npm start             # 正常运行
 npm run dev           # 带控制台日志运行
@@ -169,6 +176,22 @@ npm run build         # 打包出 Windows 安装包与免安装版
 
 `npm run smoke` 会生成 `.smoke/report.json`，内含：页面是否加载、JS 报错、各源抓取结果、
 实际渲染出的卡片数量、布局关键元素尺寸、以及交互功能的逐项校验结果。
+
+### 发布新版本
+
+推送一个 `v*` 标签即会自动构建并发布到 Releases：
+
+```bash
+git tag v1.0.1
+git push origin v1.0.1
+```
+
+工作流（`.github/workflows/build.yml`）会依次执行：安装依赖 → 下载 Electron 二进制 →
+生成图标 → 跑单元测试 → 实测数据源 → 打包 → 上传到 Release。
+
+也可以在 Actions 页面手动触发（`Run workflow`），此时只构建并保存为 Artifacts，不会发布版本。
+
+版本号需要与 `package.json` 的 `version` 保持一致，否则产物文件名会与标签不符。
 
 ### 当前测试状态
 

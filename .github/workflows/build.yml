@@ -1,0 +1,93 @@
+name: Build & Release
+
+# 触发方式：
+#   1. 推送 v* 标签（如 v1.0.0）→ 自动构建并发布到 Releases
+#   2. 手动在 Actions 页面点 Run workflow → 只构建并保存为构建产物（Artifacts），不发布
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: 构建 Windows 安装包
+    runs-on: windows-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 安装依赖
+        shell: pwsh
+        run: |
+          # 用 --ignore-scripts 跳过 electron 的 postinstall（它需要 spawn 子进程下载二进制），
+          # 改由项目自带脚本下载，行为与本地开发一致、可重复。
+          npm install --ignore-scripts --no-audit --no-fund
+
+      - name: 下载 Electron 二进制
+        shell: pwsh
+        run: node scripts/fetch-electron.mjs
+
+      - name: 生成图标
+        shell: pwsh
+        run: node scripts/make-icons.js
+
+      - name: 运行单元测试
+        shell: pwsh
+        run: node test/run-tests.mjs
+
+      - name: 实测数据源连通性
+        shell: pwsh
+        continue-on-error: true
+        run: node test/run-tests.mjs --live
+
+      - name: 打包 Windows 应用
+        shell: pwsh
+        env:
+          # GitHub 的 Windows runner 在海外，直连官方源即可；
+          # 这里仍显式指定镜像，保证在受限网络下也能构建。
+          ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
+          ELECTRON_BUILDER_BINARIES_MIRROR: https://npmmirror.com/mirrors/electron-builder-binaries/
+        run: npx electron-builder --win --x64
+
+      - name: 上传构建产物（手动触发时用）
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI-Radar-windows-x64
+          path: |
+            dist/*.exe
+            dist/*.blockmap
+          if-no-files-found: error
+
+      - name: 发布到 Releases（推送标签时）
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: AI Radar ${{ github.ref_name }}
+          draft: false
+          generate_release_notes: true
+          body: |
+            ## AI Radar ${{ github.ref_name }}
+
+            实时聚合 13 个 AI 相关数据源的 Windows 桌面应用。
+
+            ### 下载
+            - **AI-Radar-${{ github.ref_name }}-portable.exe** — 免安装版，双击即用
+            - **AI Radar Setup ${{ github.ref_name }}.exe** — 安装版，可选安装目录、创建快捷方式
+
+            > 未做代码签名，Windows SmartScreen 可能提示「未知发布者」，选择「仍要运行」即可。
+
+            ### 数据源
+            论文 · 国内资讯 · 海外资讯 · 社区热议 · 开源项目（详见 README）
+          files: |
+            dist/*.exe
+            dist/*.blockmap

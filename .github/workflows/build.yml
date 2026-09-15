@@ -81,13 +81,21 @@ jobs:
             实时聚合 13 个 AI 相关数据源的 Windows 桌面应用。
 
             ### 下载
-            - **AI-Radar-${{ github.ref_name }}-portable.exe** — 免安装版，双击即用
-            - **AI Radar Setup ${{ github.ref_name }}.exe** — 安装版，可选安装目录、创建快捷方式
+
+            请在页面下方 **Assets** 区域下载：
+
+            - **AI-Radar-<版本>-portable.exe** — 免安装版，双击即用
+            - **AI.Radar.Setup.<版本>.exe** — 安装版，可选安装目录、创建快捷方式
+
+            例如 v1.0.0 对应的文件是 `AI-Radar-1.0.0-portable.exe`。
+            （文件名由 electron-builder 按 package.json 的 version 生成，不含 `v` 前缀。）
 
             > 未做代码签名，Windows SmartScreen 可能提示「未知发布者」，选择「仍要运行」即可。
 
             ### 数据源
+
             论文 · 国内资讯 · 海外资讯 · 社区热议 · 开源项目（详见 README）
+          # 只发布可执行文件；blockmap 仅用于增量更新，本项目未启用自动更新，
+          # 放在发布页只会让用户困惑。
           files: |
             dist/*.exe
-            dist/*.blockmap

@@ -155,7 +155,7 @@ function install({ app, window, scheduler, store }) {
 
     const results = {};
 
-    // 1) 搜索过滤：结果数应减少，且每条都能在「标题+摘要+来源」里找到关键词
+    // 1) 搜索过滤：结果数应减少，且每条都能在「标题+摘要+来源+标签」里找到关键词
     results.search = await probe(`(() => {
       const before = document.querySelectorAll('#feed .card').length;
       const input = document.getElementById('inputSearch');
@@ -166,18 +166,26 @@ function install({ app, window, scheduler, store }) {
         const after = document.querySelectorAll('#feed .card').length;
         const cards = Array.from(document.querySelectorAll('#feed .card'));
         const lower = term.toLowerCase();
-        // 搜索匹配的是标题+摘要+来源，所以三处任一命中即为正确
-        const allMatch = cards.length > 0 && cards.every(c => {
+        // 必须覆盖渲染层搜索用到的全部字段：标题 + 摘要 + 来源 + 标签。
+        // 曾漏掉 tags 导致误报（GitHub 条目的 deepseek 只出现在 topics 标签里）。
+        // 用 textContent 读取以避开高亮插入的 <mark>。
+        const misses = cards.filter(c => {
           const hay = [
             c.querySelector('.card__title')?.textContent || '',
             c.querySelector('.card__summary')?.textContent || '',
-            c.querySelector('.src-tag')?.textContent || ''
+            c.querySelector('.src-tag')?.textContent || '',
+            Array.from(c.querySelectorAll('.tag')).map(t => t.textContent).join(' ')
           ].join(' ').toLowerCase();
-          return hay.includes(lower);
-        });
+          return !hay.includes(lower);
+        }).map(c => (c.querySelector('.card__title')?.textContent || '').slice(0, 40));
         input.value = '';
         input.dispatchEvent(new Event('input', { bubbles: true }));
-        setTimeout(() => resolve({ term, before, after, allMatch }), 400);
+        setTimeout(() => resolve({
+          term, before, after,
+          allMatch: cards.length > 0 && misses.length === 0,
+          missCount: misses.length,
+          missSample: misses.slice(0, 3)
+        }), 400);
       }, 500));
     })()`);
 

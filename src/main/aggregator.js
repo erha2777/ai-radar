@@ -203,6 +203,61 @@ async function fetchHfPapers(source, timeout) {
 }
 
 /**
+ * HuggingFace 模型列表（走 hf-mirror 镜像）。
+ * 用于追踪某个组织的模型发布，例如 DeepSeek 官方模型。
+ */
+async function fetchHfModels(source, timeout) {
+  const data = await withRetry(
+    () =>
+      fetchJson(source.url, {
+        timeout: source.timeout || timeout,
+        headers: source.headers || {}
+      }),
+    source.retries || 2
+  );
+  if (!Array.isArray(data)) throw new Error('返回结构不是数组');
+
+  const out = [];
+  for (const model of data) {
+    const id = model && (model.id || model.modelId);
+    if (!id) continue;
+
+    // 模型名取最后一段，标题里就不必重复组织名
+    const shortName = String(id).split('/').pop();
+    const downloads = Number(model.downloads) || 0;
+    const likes = Number(model.likes) || 0;
+    const parts = [];
+    if (downloads) parts.push(`⬇ ${formatCount(downloads)}`);
+    if (likes) parts.push(`♥ ${formatCount(likes)}`);
+    if (model.pipeline_tag) parts.push(model.pipeline_tag);
+
+    const item = normalizeItem(
+      {
+        sourceId: source.id,
+        sourceName: source.name,
+        category: source.category,
+        lang: source.lang,
+        title: shortName,
+        link: `https://hf-mirror.com/${id}`,
+        rawBody: '',
+        summary: parts.length ? `HuggingFace 模型 · ${parts.join(' · ')}` : 'HuggingFace 模型',
+        publishedAt: model.lastModified ? safeIso(model.lastModified) : null,
+        author: String(id).split('/')[0] || '',
+        image: '',
+        // tags 里形如 "license:mit" 的元数据没有展示价值，过滤掉
+        tags: Array.isArray(model.tags) ? model.tags.filter((t) => !String(t).includes(':')).slice(0, 6) : [],
+        points: downloads || null,
+        comments: null
+      },
+      source
+    );
+    if (item) out.push(item);
+  }
+  if (!out.length) throw new Error('镜像返回了数据但没有可用的模型条目');
+  return out;
+}
+
+/**
  * GitHub 仓库搜索（走 gh-proxy.com 代理）。
  *
  * 注意：GitHub 搜索 API 会把「只含逻辑运算符、没有检索词」的查询判定为 422，
@@ -286,6 +341,7 @@ async function fetchGithubSource(source, timeout) {
 const FETCHERS = {
   rss: fetchRssSource,
   'hf-papers': fetchHfPapers,
+  'hf-models': fetchHfModels,
   github: fetchGithubSource
 };
 
@@ -407,11 +463,25 @@ async function fetchAll(sources, options = {}) {
     statuses.push(status);
   }
 
-  const cutoff = Date.now() - MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+  // 时效过滤：每个源可以用 maxAgeDays 覆盖默认窗口。
+  // 专题源（如量子位的 DeepSeek 标签页）更新很慢，平均一个多月才一篇，
+  // 统一用 21 天会把内容全部丢掉，所以允许按源放宽。
+  const now = Date.now();
+  const defaultCutoff = now - MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+  const cutoffBySource = new Map();
+  for (const s of sources) {
+    const days = Number(s.maxAgeDays);
+    cutoffBySource.set(
+      s.id,
+      Number.isFinite(days) && days > 0 ? now - days * 24 * 60 * 60 * 1000 : defaultCutoff
+    );
+  }
+
   const fresh = allItems.filter((it) => {
     if (!it.publishedAt) return true; // 无时间的保留，交给排序兜底
     const ms = Date.parse(it.publishedAt);
-    return !Number.isFinite(ms) || ms >= cutoff;
+    if (!Number.isFinite(ms)) return true;
+    return ms >= (cutoffBySource.get(it.sourceId) ?? defaultCutoff);
   });
 
   const merged = dedupe(fresh).sort(byRecency);

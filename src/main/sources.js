@@ -10,10 +10,13 @@
  *  - arXiv 官方 API（export.arxiv.org / arxiv.org）在本机完全超时，故不使用。
  *
  * 字段说明：
- *  kind     抓取器类型：rss | json
- *  category 分类键，用于界面筛选
- *  lang     原文语言，用于界面语言标记
- *  enabled  默认是否启用（用户可在设置里改）
+ *  kind        抓取器类型：rss | hf-papers | github | hf-models
+ *  category    分类键，用于界面筛选
+ *  lang        原文语言，用于界面语言标记
+ *  enabled     默认是否启用（用户可在设置里改）
+ *  maxAgeDays  该源单独的保留时效，覆盖默认的 21 天。
+ *              用于更新频率低的专题源：例如量子位的 DeepSeek 标签页平均
+ *              一个多月才有一篇，用默认时效会把内容全部丢掉。
  */
 
 const CATEGORIES = [
@@ -21,7 +24,8 @@ const CATEGORIES = [
   { id: 'cn', name: '国内资讯', icon: '🇨🇳', desc: '中文科技媒体 AI 报道' },
   { id: 'global', name: '海外资讯', icon: '🌍', desc: '海外官方博客与科技媒体' },
   { id: 'community', name: '社区热议', icon: '💬', desc: '开发者社区讨论与热点' },
-  { id: 'opensource', name: '开源项目', icon: '⭐', desc: 'GitHub 上活跃的 AI 项目' }
+  { id: 'opensource', name: '开源项目', icon: '⭐', desc: 'GitHub 上活跃的 AI 项目' },
+  { id: 'deepseek', name: 'DeepSeek 专区', icon: '🐋', desc: 'DeepSeek 官方动态与专题报道' }
 ];
 
 /**
@@ -230,6 +234,76 @@ const SOURCES = [
     perQuery: 25,
     sort: 'updated',
     // 5 条查询串行执行，整体留足时间（默认 20s 会不够）
+    timeout: 90000,
+    queryTimeout: 15000
+  },
+
+  /* ---------------- DeepSeek 专区 ----------------
+   *
+   * 为什么单独建一组源：通用科技媒体对 DeepSeek 的报道密度很低，
+   * 实测 14 个通用源里 DeepSeek 相关条目只有 3 条（且全来自 GitHub）。
+   * 即使直接解析原始 feed（不经任何过滤），IT之家 60 条、开源中国 50 条里
+   * DeepSeek 也是 0 条 —— 不是被过滤掉了，而是源里本来就没有。
+   * 因此需要引入 DeepSeek 专属源。
+   */
+  {
+    id: 'qbitai-deepseek',
+    name: '量子位 · DeepSeek',
+    category: 'deepseek',
+    lang: 'zh',
+    kind: 'rss',
+    homepage: 'https://www.qbitai.com/tag/deepseek',
+    url: 'https://www.qbitai.com/tag/deepseek/feed',
+    enabled: true,
+    weight: 85,
+    headers: HEADERS.minimal,
+    /**
+     * 专题源更新很慢：实测该标签页平均一个多月才发一篇
+     * （最近一篇在抓取时已距今 31 天）。用默认 21 天时效会把内容全部丢掉，
+     * 所以单独放宽到 120 天。
+     */
+    maxAgeDays: 120
+  },
+  {
+    id: 'hf-deepseek-models',
+    name: 'DeepSeek 官方模型',
+    category: 'deepseek',
+    lang: 'en',
+    kind: 'hf-models',
+    homepage: 'https://hf-mirror.com/deepseek-ai',
+    // 只取官方组织，避免社区量化版本（search=deepseek 会返回大量第三方模型）
+    url: 'https://hf-mirror.com/api/models?author=deepseek-ai&sort=lastModified&limit=30',
+    enabled: true,
+    weight: 95,
+    /**
+     * 模型发布同样稀疏：实测最近两个是 09-10 与 09-01，再往前就超出 21 天。
+     * 而官方模型发布正是用户最想看到的里程碑，故放宽到 180 天。
+     */
+    maxAgeDays: 180
+  },
+  {
+    id: 'gh-deepseek',
+    name: 'GitHub · DeepSeek 生态',
+    category: 'deepseek',
+    lang: 'en',
+    kind: 'github',
+    homepage: 'https://github.com/search?q=deepseek',
+    url: 'https://gh-proxy.com/https://api.github.com/search/repositories',
+    enabled: true,
+    weight: 50,
+    /**
+     * 实测查询精度对比（同样取 20 条，名称真正含 deepseek 的数量）：
+     *   deepseek in:name                     → 20/20  ✔ 包括官方 deepseek-ai/* 仓库
+     *   deepseek in:name,description         →  2/20  噪音大
+     *   deepseek in:name,description,readme  →  0/20  几乎全是顺带提到
+     *   topic:deepseek                       →  2/20  噪音大
+     * 因此只用 in:name，宁可少而准。
+     */
+    queries: ['deepseek in:name'],
+    // 生态项目比主仓库小得多，星标门槛放低
+    minStars: 30,
+    perQuery: 30,
+    sort: 'updated',
     timeout: 90000,
     queryTimeout: 15000
   }

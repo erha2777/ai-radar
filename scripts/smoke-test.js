@@ -86,9 +86,11 @@ child.on('exit', (code, signal) => {
         const mark = (ok) => (ok ? '✔' : '✘');
 
         if (e.search) {
-          const ok = e.search.after < e.search.before && e.search.allMatch;
+          const s = e.search;
+          const ok = s.after < s.before && s.allMatch;
           console.log(
-            `  ${mark(ok)} 搜索「${e.search.term}」: ${e.search.before} → ${e.search.after} 条，命中校验=${e.search.allMatch}`
+            `  ${mark(ok)} 搜索「${s.term}」: ${s.before} → ${s.after} 条，命中校验=${s.allMatch}` +
+              (s.missCount ? `（${s.missCount} 条未命中：${(s.missSample || []).join(' / ')}）` : '')
           );
         }
         if (e.category) {

@@ -279,7 +279,8 @@ const CATEGORY_DEFS = [
   { id: 'cn', name: '国内资讯', icon: '🇨🇳' },
   { id: 'global', name: '海外资讯', icon: '🌍' },
   { id: 'community', name: '社区热议', icon: '💬' },
-  { id: 'opensource', name: '开源项目', icon: '⭐' }
+  { id: 'opensource', name: '开源项目', icon: '⭐' },
+  { id: 'deepseek', name: 'DeepSeek 专区', icon: '🐋' }
 ];
 
 function renderCategories() {

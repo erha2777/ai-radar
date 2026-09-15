@@ -1,0 +1,20 @@
+# 依赖与构建产物
+node_modules/
+dist/
+
+# 本地缓存（npm 缓存重定向到工作区内，避免受限环境下写系统缓存失败）
+.npm-cache/
+.tmp-dl/
+
+# 测试与调试产物（覆盖 .smoke / .smoke-dist / .smoke-final 等全部变体）
+.smoke*/
+.tmp-test-store/
+
+# 系统文件
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# 日志
+*.log
+npm-debug.log*

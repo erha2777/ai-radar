@@ -1,0 +1,64 @@
+{
+  "name": "ai-radar",
+  "version": "1.0.0",
+  "description": "AI Radar - 实时聚合 AI 领域最新消息的桌面应用",
+  "main": "src/main/main.js",
+  "author": "AI Radar",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "icons": "node scripts/make-icons.js",
+    "postinstall:manual": "node scripts/fetch-electron.mjs",
+    "setup": "npm install --ignore-scripts && node scripts/fetch-electron.mjs && node scripts/make-icons.js",
+    "test": "node test/run-tests.mjs",
+    "test:live": "node test/run-tests.mjs --live",
+    "smoke": "node scripts/smoke-test.js",
+    "build": "node scripts/make-icons.js && electron-builder --win --x64",
+    "build:dir": "node scripts/make-icons.js && electron-builder --win --x64 --dir"
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.airadar.desktop",
+    "productName": "AI Radar",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "AI Radar"
+    },
+    "portable": {
+      "artifactName": "AI-Radar-${version}-portable.exe"
+    }
+  }
+}

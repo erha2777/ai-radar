@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http:; font-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none';"
+  />
+  <title>AI Radar — AI 实时资讯雷达</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- ================= 标题栏（自绘，可拖拽窗口） ================= -->
+  <header class="titlebar">
+    <div class="titlebar__brand">
+      <img class="titlebar__logo" src="assets/icon.png" alt="" />
+      <div class="titlebar__names">
+        <h1>AI Radar</h1>
+        <span id="brandSub">AI 实时资讯雷达</span>
+      </div>
+    </div>
+
+    <div class="titlebar__status" id="statusBar">
+      <span class="dot dot--idle" id="statusDot"></span>
+      <span id="statusText">初始化中…</span>
+      <span class="statusbar__sep" id="statusSep" hidden>·</span>
+      <span id="statusDetail" class="muted"></span>
+    </div>
+
+    <div class="titlebar__actions">
+      <button class="btn btn--ghost" id="btnRefresh" title="立即刷新 (F5)">
+        <svg viewBox="0 0 24 24" class="ico"><path d="M17.65 6.35A8 8 0 1 0 19.73 14h-2.08A6 6 0 1 1 12 6a5.9 5.9 0 0 1 4.22 1.78L13 11h7V4z"/></svg>
+        <span>刷新</span>
+      </button>
+      <button class="btn btn--ghost btn--icon" id="btnTheme" title="切换主题 (Ctrl+D)">
+        <svg viewBox="0 0 24 24" class="ico" id="themeIcon"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36A5.39 5.39 0 0 1 12 3z"/></svg>
+      </button>
+      <button class="btn btn--ghost btn--icon" id="btnSettings" title="设置 (Ctrl+,)">
+        <svg viewBox="0 0 24 24" class="ico"><path d="M19.14 12.94a7.14 7.14 0 0 0 .06-.94 7.14 7.14 0 0 0-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.61l-1.92-3.32a.5.5 0 0 0-.59-.22l-2.39.96a7.3 7.3 0 0 0-1.62-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.58.24-1.12.56-1.62.94l-2.39-.96a.5.5 0 0 0-.59.22L2.74 8.87a.5.5 0 0 0 .12.61l2.03 1.58c-.04.31-.06.62-.06.94s.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.61l1.92 3.32c.12.22.37.3.59.22l2.39-.96c.5.38 1.04.7 1.62.94l.36 2.54c.05.24.25.42.5.42h3.84c.25 0 .45-.18.5-.42l.36-2.54c.58-.24 1.12-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.5.5 0 0 0-.12-.61l-2.03-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= 主体 ================= -->
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <nav class="nav" id="navCategories">
+        <div class="nav__title">分类</div>
+        <!-- 分类按钮由 JS 渲染 -->
+      </nav>
+
+      <div class="nav nav--sources">
+        <div class="nav__title">
+          数据源
+          <button class="link-btn" id="btnToggleAllSources">全选/反选</button>
+        </div>
+        <div class="source-list" id="sourceList"></div>
+      </div>
+
+      <div class="sidebar__foot">
+        <button class="side-btn" id="btnFavorites">
+          <span>⭐ 我的收藏</span>
+          <span class="badge" id="favCount">0</span>
+        </button>
+        <button class="side-btn" id="btnShowAll">
+          <span>📥 全部消息</span>
+          <span class="badge" id="allCount">0</span>
+        </button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <div class="toolbar">
+        <div class="search">
+          <svg viewBox="0 0 24 24" class="ico ico--dim"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>
+          <input type="text" id="inputSearch" placeholder="搜索标题、摘要、来源…（Ctrl+F）" autocomplete="off" />
+          <button class="clear-btn" id="btnClearSearch" hidden>×</button>
+        </div>
+
+        <div class="toolbar__controls">
+          <div class="seg" id="segSort">
+            <button class="seg__item is-active" data-sort="time">最新</button>
+            <button class="seg__item" data-sort="hot">最热</button>
+          </div>
+          <label class="chk" title="只显示未读">
+            <input type="checkbox" id="chkUnreadOnly" /> 未读
+          </label>
+          <label class="chk" title="只显示命中关注关键词的内容">
+            <input type="checkbox" id="chkKeywordOnly" /> 关注词
+          </label>
+          <button class="btn btn--ghost btn--sm" id="btnMarkAllRead">全部已读</button>
+        </div>
+      </div>
+
+      <div class="keyword-bar" id="keywordBar"></div>
+
+      <div class="progress" id="progressBar" hidden><div class="progress__fill" id="progressFill"></div></div>
+
+      <section class="feed" id="feed">
+        <!-- 消息卡片由 JS 渲染 -->
+      </section>
+
+      <div class="empty" id="emptyState" hidden>
+        <div class="empty__icon">📡</div>
+        <h2 id="emptyTitle">正在扫描信号…</h2>
+        <p id="emptyDesc">首次启动需要一点时间拉取各数据源</p>
+        <button class="btn btn--primary" id="btnEmptyRefresh">立即刷新</button>
+      </div>
+    </main>
+  </div>
+
+  <!-- ================= 设置面板 ================= -->
+  <div class="modal" id="settingsModal" hidden>
+    <div class="modal__backdrop" data-close="1"></div>
+    <div class="modal__panel">
+      <header class="modal__head">
+        <h2>设置</h2>
+        <button class="btn btn--ghost btn--icon" data-close="1" title="关闭">×</button>
+      </header>
+
+      <div class="modal__body">
+        <section class="form-group">
+          <h3>抓取与通知</h3>
+          <label class="field">
+            <span>自动刷新间隔</span>
+            <select id="selInterval">
+              <option value="1">1 分钟</option>
+              <option value="2">2 分钟</option>
+              <option value="5">5 分钟</option>
+              <option value="10">10 分钟</option>
+              <option value="15">15 分钟</option>
+              <option value="30">30 分钟</option>
+              <option value="60">1 小时</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>列表最多显示</span>
+            <select id="selMaxItems">
+              <option value="100">100 条</option>
+              <option value="200">200 条</option>
+              <option value="500">500 条</option>
+              <option value="1000">1000 条</option>
+              <option value="2000">2000 条</option>
+            </select>
+          </label>
+          <label class="chk chk--block">
+            <input type="checkbox" id="chkNotify" /> 有新内容时发送系统通知
+          </label>
+          <label class="field field--sub">
+            <span>通知重要度阈值</span>
+            <input type="range" id="rangeNotifyScore" min="1" max="10" step="1" />
+            <output id="outNotifyScore">3</output>
+          </label>
+          <button class="btn btn--ghost btn--sm" id="btnTestNotify">发送测试通知</button>
+        </section>
+
+        <section class="form-group">
+          <h3>关注关键词</h3>
+          <p class="hint">命中的内容会高亮标记，并提高通知优先级。</p>
+          <div class="chips" id="keywordChips"></div>
+          <div class="kw-add">
+            <input type="text" id="inputKeyword" placeholder="输入关键词后回车，如 DeepSeek" />
+            <button class="btn btn--ghost btn--sm" id="btnAddKeyword">添加</button>
+          </div>
+        </section>
+
+        <section class="form-group">
+          <h3>窗口行为</h3>
+          <label class="chk chk--block">
+            <input type="checkbox" id="chkLaunchAtLogin" /> 开机自动启动（静默到托盘）
+          </label>
+          <label class="chk chk--block">
+            <input type="checkbox" id="chkCloseToTray" /> 关闭窗口时最小化到托盘，不退出程序
+          </label>
+        </section>
+
+        <section class="form-group">
+          <h3>数据源状态</h3>
+          <div class="status-table" id="statusTable"></div>
+        </section>
+
+        <section class="form-group">
+          <h3>关于</h3>
+          <div class="about" id="aboutBox"></div>
+          <div class="about__actions">
+            <button class="btn btn--ghost btn--sm" id="btnOpenData">打开数据目录</button>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-wrap" id="toastWrap"></div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

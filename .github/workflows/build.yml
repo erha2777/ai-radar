@@ -57,7 +57,12 @@ jobs:
           # 这里仍显式指定镜像，保证在受限网络下也能构建。
           ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
           ELECTRON_BUILDER_BINARIES_MIRROR: https://npmmirror.com/mirrors/electron-builder-binaries/
-        run: npx electron-builder --win --x64
+        run: |
+          # --publish never：明确禁止 electron-builder 自己发布。
+          # 否则它会尝试自动发布，在缺少 GH_TOKEN 时直接报错退出（CI=true 触发），
+          # 而且会和下面的 action-gh-release 形成两个发布出口互相打架。
+          # 发布统一由最后一步的 softprops/action-gh-release 负责。
+          npx electron-builder --win --x64 --publish never
 
       - name: 上传构建产物（手动触发时用）
         uses: actions/upload-artifact@v4

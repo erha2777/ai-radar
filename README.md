@@ -14,14 +14,20 @@
 
 ### 方式 A：下载打包好的程序（推荐）
 
-到 [Releases](https://github.com/erha2777/ai-radar/releases/latest) 下载：
+**免安装版**（双击即用，无需安装）：
 
-- **`AI-Radar-1.0.0-portable.exe`** — 免安装版，双击即用
-- **`AI Radar Setup 1.0.0.exe`** — 安装版，可选安装目录、创建桌面快捷方式
+👉 [**AI-Radar-1.0.0-portable.exe**](https://github.com/erha2777/ai-radar/releases/latest/download/AI-Radar-1.0.0-portable.exe)
+
+也可以到 [Releases 页面](https://github.com/erha2777/ai-radar/releases/latest) 选择：
+
+- `AI-Radar-1.0.0-portable.exe` — 免安装版
+- `AI.Radar.Setup.1.0.0.exe` — 安装版（可选安装目录、创建桌面与开始菜单快捷方式）
 
 > 未做代码签名，Windows SmartScreen 可能提示「未知发布者」，点「更多信息 → 仍要运行」即可。
 >
 > 发布包由 GitHub Actions 在推送 `v*` 标签时自动构建，流程见 `.github/workflows/build.yml`。
+> 注意 Actions 页面里的 Artifacts 需要登录 GitHub 才能下载，且 90 天后过期；
+> 长期分发请使用上面的 Releases 链接。
 
 ### 方式 B：从源码运行
 

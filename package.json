@@ -15,8 +15,10 @@
     "test": "node test/run-tests.mjs",
     "test:live": "node test/run-tests.mjs --live",
     "smoke": "node scripts/smoke-test.js",
-    "build": "node scripts/make-icons.js && electron-builder --win --x64",
-    "build:dir": "node scripts/make-icons.js && electron-builder --win --x64 --dir"
+    "prebuild-check": "node scripts/prebuild-check.js",
+    "build": "node scripts/prebuild-check.js && node scripts/make-icons.js && electron-builder --win --x64 --publish never",
+    "build:force": "node scripts/prebuild-check.js --kill && node scripts/make-icons.js && electron-builder --win --x64 --publish never",
+    "build:dir": "node scripts/prebuild-check.js && node scripts/make-icons.js && electron-builder --win --x64 --dir --publish never"
   },
   "devDependencies": {
     "electron": "^33.4.11",

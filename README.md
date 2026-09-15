@@ -170,7 +170,18 @@ npm run smoke         # 启动应用，抓取完成后自动截图 + 输出诊�
 npm start             # 正常运行
 npm run dev           # 带控制台日志运行
 npm run build         # 打包出 Windows 安装包与免安装版
+npm run build:force   # 同上，但先自动结束正在运行的应用实例
 ```
+
+**打包前请先退出正在运行的 AI Radar**。应用运行时会锁定 `dist` 目录里的 exe 与
+`app.asar`，此时打包会失败并报出难以理解的底层错误（`Access is denied` /
+`ERR_ELECTRON_BUILDER_CANNOT_EXECUTE`）。`npm run build` 会先做前置检查，检测到实例
+在运行就给出明确提示；`npm run build:force` 则会自动结束这些进程后继续。
+
+> 前置检查的判据基于**纯 ASCII 的路径片段**（`\node_modules\electron\dist\electron.exe`
+> 与 `\dist\win-unpacked\`），而不是项目路径或应用名。原因是 PowerShell 5.1 默认按系统
+> OEM 代码页编码管道输出、而 Node 按 UTF-8 解码，中文路径读回来会变成乱码，任何路径前缀
+> 比较都会失效；同时也保证将来把应用改成中文名后检查依然有效。
 
 `npm run test:live` 会逐个打印每个源的抓取条数与耗时，便于快速发现某个源失效。
 

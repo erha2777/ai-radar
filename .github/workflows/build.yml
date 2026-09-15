@@ -37,10 +37,6 @@ jobs:
         shell: pwsh
         run: node scripts/fetch-electron.mjs
 
-      - name: 生成图标
-        shell: pwsh
-        run: node scripts/make-icons.js
-
       - name: 运行单元测试
         shell: pwsh
         run: node test/run-tests.mjs
@@ -57,12 +53,11 @@ jobs:
           # 这里仍显式指定镜像，保证在受限网络下也能构建。
           ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
           ELECTRON_BUILDER_BINARIES_MIRROR: https://npmmirror.com/mirrors/electron-builder-binaries/
-        run: |
-          # --publish never：明确禁止 electron-builder 自己发布。
-          # 否则它会尝试自动发布，在缺少 GH_TOKEN 时直接报错退出（CI=true 触发），
-          # 而且会和下面的 action-gh-release 形成两个发布出口互相打架。
-          # 发布统一由最后一步的 softprops/action-gh-release 负责。
-          npx electron-builder --win --x64 --publish never
+        # 直接复用 npm 脚本，保证 CI 与本地执行的是同一条命令链：
+        # 前置检查 → 生成图标 → 打包。
+        # 其中 --publish never 很关键：否则 electron-builder 会自行接管发布，
+        # 在缺少 GH_TOKEN 时直接报错退出，并与末尾的 action-gh-release 冲突。
+        run: npm run build
 
       - name: 上传构建产物（手动触发时用）
         uses: actions/upload-artifact@v4

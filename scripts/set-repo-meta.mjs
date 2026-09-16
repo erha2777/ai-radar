@@ -25,8 +25,15 @@ const root = path.resolve(__dirname, '..');
 const OWNER = 'erha2777';
 const REPO = 'ai-radar';
 
+/**
+ * 简介与主题标签。
+ *
+ * 注意：简介里的数据源数量必须与 src/main/sources.js 一致。
+ * 曾出现过简介写「13 个」而实际已增至 16 个的情况（新增 DeepSeek 专区后忘了同步），
+ * 所以下面加了硬校验，不一致会直接报错。
+ */
 const DESCRIPTION =
-  '实时聚合 13 个 AI 数据源的 Windows 桌面应用（论文/资讯/社区/开源），支持系统通知、关键词关注、搜索与收藏';
+  '实时聚合 16 个 AI 数据源的 Windows 桌面应用（论文 / 国内资讯 / 海外资讯 / 社区热议 / 开源项目 / DeepSeek 专区），支持系统通知、关键词关注、搜索与收藏';
 
 const TOPICS = [
   'electron',
@@ -38,6 +45,7 @@ const TOPICS = [
   'windows',
   'llm',
   'huggingface',
+  'deepseek',
   'javascript'
 ];
 
@@ -84,6 +92,36 @@ function fail(msg) {
 }
 
 /* ---------------------------- 前置检查 ---------------------------- */
+
+// 简介里的数据源数量必须与实际启用数一致，否则仓库页会显示过时信息。
+// 这类数字很容易在新增数据源后忘记同步，所以做成硬校验。
+try {
+  // 本文件是 ESM，sources.js 是 CommonJS，需经 createRequire 载入
+  const { createRequire } = await import('node:module');
+  const requireCjs = createRequire(import.meta.url);
+  const { SOURCES } = requireCjs(path.join(root, 'src/main/sources.js'));
+
+  const enabledCount = SOURCES.filter((s) => s.enabled !== false).length;
+  const match = /(\d+)\s*个\s*AI\s*数据源/.exec(DESCRIPTION);
+  const claimed = match ? Number(match[1]) : null;
+
+  if (claimed === null) {
+    fail('简介中未找到「N 个 AI 数据源」的表述，请检查 DESCRIPTION 文案');
+  }
+  if (claimed !== enabledCount) {
+    fail(
+      '简介里的数据源数量与实际不一致：\n' +
+        `    简介写的：${claimed} 个\n` +
+        `    实际启用：${enabledCount} 个（共 ${SOURCES.length} 个，` +
+        `${SOURCES.filter((s) => s.enabled === false).length} 个默认关闭）\n` +
+        '    请更新本文件的 DESCRIPTION 后再运行。'
+    );
+  }
+  console.log(`[0/5] 数据源数量校验通过：${enabledCount} 个（共 ${SOURCES.length} 个）`);
+} catch (err) {
+  // 读不到源定义时不阻断（例如把本脚本单独拿去别处用）
+  console.log(`[0/5] 跳过数据源数量校验（${String(err.message).split('\n')[0]}）`);
+}
 
 if (!process.env.GH_TOKEN && !process.env.GITHUB_TOKEN) {
   fail(

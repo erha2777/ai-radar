@@ -3,7 +3,7 @@
 [![Build & Release](https://github.com/erha2777/ai-radar/actions/workflows/build.yml/badge.svg)](https://github.com/erha2777/ai-radar/actions/workflows/build.yml)
 [![Release](https://img.shields.io/github/v/release/erha2777/ai-radar?display_name=tag)](https://github.com/erha2777/ai-radar/releases/latest)
 
-一个 Windows 桌面应用，持续聚合 **13 个** AI 相关数据源（论文 / 国内资讯 / 海外资讯 / 社区热议 / 开源项目），
+一个 Windows 桌面应用，持续聚合 **16 个** AI 相关数据源（论文 / 国内资讯 / 海外资讯 / 社区热议 / 开源项目 / DeepSeek 专区），
 有新内容时推送系统通知，支持分类筛选、关键词关注、搜索、已读与收藏。
 
 界面为深色主题，自绘标题栏，常驻系统托盘。
@@ -14,20 +14,22 @@
 
 ### 方式 A：下载打包好的程序（推荐）
 
-**免安装版**（双击即用，无需安装）：
+👉 **[前往 Releases 下载最新版](https://github.com/erha2777/ai-radar/releases/latest)**
 
-👉 [**AI-Radar-1.0.0-portable.exe**](https://github.com/erha2777/ai-radar/releases/latest/download/AI-Radar-1.0.0-portable.exe)
+在页面下方的 **Assets** 区域选择：
 
-也可以到 [Releases 页面](https://github.com/erha2777/ai-radar/releases/latest) 选择：
+| 文件 | 说明 |
+|---|---|
+| `AI-Radar-x.y.z-portable.exe` | **免安装版**，双击即用 |
+| `AI.Radar.Setup.x.y.z.exe` | **安装版**，可选安装目录、创建桌面与开始菜单快捷方式 |
 
-- `AI-Radar-1.0.0-portable.exe` — 免安装版
-- `AI.Radar.Setup.1.0.0.exe` — 安装版（可选安装目录、创建桌面与开始菜单快捷方式）
+`x.y.z` 是版本号（例如 v1.1.0 对应 `AI-Radar-1.1.0-portable.exe`）。
+文件名由 electron-builder 依 `package.json` 的 `version` 生成，**不含 `v` 前缀**。
 
 > 未做代码签名，Windows SmartScreen 可能提示「未知发布者」，点「更多信息 → 仍要运行」即可。
 >
 > 发布包由 GitHub Actions 在推送 `v*` 标签时自动构建，流程见 `.github/workflows/build.yml`。
-> 注意 Actions 页面里的 Artifacts 需要登录 GitHub 才能下载，且 90 天后过期；
-> 长期分发请使用上面的 Releases 链接。
+> 注意 Actions 页面里的 Artifacts 需要登录 GitHub 才能下载、且 90 天后过期，长期分发请用 Releases。
 
 ### 方式 B：从源码运行
 
@@ -83,22 +85,50 @@ npm start
 |---|---|---|---|---|
 | HuggingFace 每日论文 | 论文 | JSON（`hf-mirror.com` 镜像） | ✅ 50 条 | 启用 |
 | 量子位 | 国内资讯 | RSS | ✅ 10 条 | 启用 |
-| IT之家 | 国内资讯 | RSS（按 AI 关键词过滤） | ✅ 14 条 | 启用 |
+| IT之家 | 国内资讯 | RSS（按 AI 关键词过滤） | ✅ 14~19 条 | 启用 |
 | InfoQ 中文 | 国内资讯 | RSS | ✅ 20 条 | 启用 |
-| 雷锋网 | 国内资讯 | RSS（按 AI 关键词过滤） | ✅ 17 条 | 启用 |
-| 开源中国 | 国内资讯 | RSS（按 AI 关键词过滤） | ✅ 30 条 | 启用 |
+| 雷锋网 | 国内资讯 | RSS（按 AI 关键词过滤） | ✅ 17~19 条 | 启用 |
+| 开源中国 | 国内资讯 | RSS（按 AI 关键词过滤） | ✅ 29~31 条 | 启用 |
 | Solidot 奇客 | 国内资讯 | RSS（按 AI 关键词过滤） | ✅ 8 条 | 启用 |
 | OpenAI Blog | 海外资讯 | RSS | ✅ 1193 条 | 启用 |
 | TechCrunch AI | 海外资讯 | RSS | ✅ 20 条 | 启用 |
 | MarkTechPost | 海外资讯 | RSS | ✅ 10 条 | 启用 |
 | HuggingFace Blog | 海外资讯 | RSS（`hf-mirror.com` 镜像） | ✅ 862 条 | 启用 |
 | Hacker News | 社区热议 | RSS（按 AI 关键词过滤） | ✅ 4~20 条 | 启用 |
-| GitHub 热门仓库 | 开源项目 | JSON（`gh-proxy.com` 代理） | ✅ 101~103 条 | 启用 |
+| GitHub 热门仓库 | 开源项目 | JSON（`gh-proxy.com` 代理） | ✅ 90~105 条 | 启用 |
+| **量子位 · DeepSeek** | **DeepSeek 专区** | RSS | ✅ 10 条 | 启用 |
+| **DeepSeek 官方模型** | **DeepSeek 专区** | JSON（hf-mirror） | ✅ 30 条 | 启用 |
+| **GitHub · DeepSeek 生态** | **DeepSeek 专区** | JSON（gh-proxy 代理） | ✅ 30 条 | 启用 |
 | Google AI Blog | 海外资讯 | RSS | ⚠️ 时快时慢（500ms ~ 超时） | **默认关闭** |
 
-**关于 Google AI Blog**：13 个源稳定可用；Google AI Blog 在本机网络下响应时间剧烈波动，
+**关于 Google AI Blog**：其余 16 个源稳定可用；Google AI Blog 在本机网络下响应时间剧烈波动，
 连续 4 次实测有 3 次失败（单次卡住 24~33 秒）。为避免拖慢首次刷新，它**默认关闭**，
 可在侧栏「数据源」里勾选启用——如果你的网络访问该站更稳定，它就能正常工作。
+
+### 为什么单独设「DeepSeek 专区」
+
+通用科技媒体对 DeepSeek 的报道密度很低。实测统计：原 14 个源里 DeepSeek 相关条目只有
+**3 条**，且全部来自 GitHub。**直接解析各源原始 feed 后统计，DeepSeek 相关条目为 0**
+（IT之家 60 条、开源中国 50 条、量子位 10 条中均无）——即源里本来就没有，
+并非被关键词过滤或时效窗口丢弃。因此引入 3 个专属源，相关内容增至 **62 条**。
+
+GitHub 查询的精度经过实测对比后确定，只用 `deepseek in:name`：
+
+| 查询 | 取 20 条中名称真含 deepseek |
+|---|---|
+| `deepseek in:name` | **20/20** ✔ 含官方 `deepseek-ai/*` 仓库 |
+| `deepseek in:name,description` | 2/20 |
+| `deepseek in:name,description,readme` | 0/20（几乎全是顺带提及） |
+| `topic:deepseek` | 2/20 |
+
+### 按源覆盖保留时效（`maxAgeDays`）
+
+默认只保留最近 **21 天**的内容。但专题源更新稀疏，统一的窗口会把它们清空：
+
+- 量子位 DeepSeek 标签：实测最近一篇距今 **31 天** → 放宽到 **120 天**
+- DeepSeek 官方模型：最近两个发布分别在 09-10、09-01 → 放宽到 **180 天**
+
+因此在源定义里支持 `maxAgeDays` 按源覆盖，而不是全局放宽（全局放宽会让通用源混入陈旧内容）。
 
 ### 已知不可用的源（已排除，非缺陷）
 
@@ -234,19 +264,22 @@ node scripts/set-repo-meta.mjs
 
 凭据只从环境变量读取，不写入命令行历史或任何文件；脚本会在写入后回读校验。
 
-### 当前测试状态
+### 当前测试状态（v1.1.0）
 
 ```
-离线单元测试：61 项全部通过（解析器 / HTML 清洗 / 去重 / 摘要识别 / 配置存储）
-真实源实测  ：68 项全部通过，13~14/14 源成功，抓到 340+ 条内容
-冒烟测试    ：页面加载成功，渲染进程零报错，列表渲染 340+ 张卡片
-交互功能    ：搜索 / 分类筛选 / 标记已读 / 收藏 / 排序 全部通过校验
-打包产物    ：AI Radar.exe 实测启动正常，13/13 启用源成功
+离线单元测试：67 项全部通过（解析器 / HTML 清洗 / 去重 / 摘要识别 / 收藏 / 配置存储）
+真实源实测  ：17 个源中 16 个启用，稳定抓取 400+ 条内容
+冒烟测试    ：页面加载成功，渲染进程零报错，列表渲染 400+ 张卡片
+交互功能    ：搜索 / 分类筛选 / 标记已读 / 收藏 / 收藏视图 / 取消收藏 / 排序
+              共 7 项全部通过校验
+打包产物    ：AI Radar.exe 实测启动正常，启用源全部成功
 ```
 
 `npm run smoke` 除截图外，还会真实操作一遍核心交互并逐项校验，
 例如「标记已读」会核对：点击前按钮文案、点击后卡片样式、数据里的已读状态、未读数变化，
-四项全部一致才算通过（这样界面显示与底层数据不一致的问题会被自动发现）。
+四项全部一致才算通过（这样界面显示与底层数据不一致的问题会被自动发现）；
+「收藏视图」会核对「侧栏计数 > 0 时列表必须有卡片」——这正是曾经出现过
+「显示收藏 1 条、点进去却是空的」那个问题的直接表现。
 
 ---
 

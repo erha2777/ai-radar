@@ -18,6 +18,18 @@ function isKeepAlive() {
   return process.argv.includes('--keep') || process.env.AI_RADAR_SMOKE_KEEP === '1';
 }
 
+/**
+ * 演示截图模式：跑完常规校验后，把界面恢复成「新用户首次打开」的干净状态再截图，
+ * 用于放进 README / 仓库展示。
+ *
+ * 为什么不直接用测试过程的截图：那时界面带着测试留下的痕迹 ——
+ * 排序停在「最热」（列表会被高星项目占满）、卡片有 is-flash 高亮边框、
+ * 分类停在最后点过的那个，都不适合当展示图。
+ */
+function isDemo() {
+  return process.argv.includes('--demo') || process.env.AI_RADAR_SMOKE_DEMO === '1';
+}
+
 function outDir() {
   return process.env.AI_RADAR_SMOKE_DIR || path.join(__dirname, '..', '..', '.smoke');
 }
@@ -315,6 +327,117 @@ function install({ app, window, scheduler, store }) {
     return results;
   }
 
+  /**
+   * 演示截图：先把界面恢复到「干净状态」，再依次截取总览、DeepSeek 专区、设置面板。
+   * 输出到 demo/ 子目录，文件名固定，便于 README 长期引用。
+   */
+  async function captureShowcase() {
+    const run = async (script) => {
+      try {
+        return await wc.executeJavaScript(script, true);
+      } catch (err) {
+        report.rendererErrors.push(`演示截图操作失败：${err.message}`);
+        return null;
+      }
+    };
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    // 1) 复位：分类回「全部」、排序回「最新」、清空搜索与折叠所有卡片。
+    //    测试过程会把这些改掉，不复位的话截图会带着测试痕迹。
+    await run(`(() => {
+      document.getElementById('btnShowAll')?.click();
+      document.querySelector('#segSort [data-sort="time"]')?.click();
+      const input = document.getElementById('inputSearch');
+      if (input) { input.value = ''; input.dispatchEvent(new Event('input', { bubbles: true })); }
+      document.getElementById('chkUnreadOnly').checked = false;
+      document.getElementById('chkUnreadOnly').dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('chkKeywordOnly').checked = false;
+      document.getElementById('chkKeywordOnly').dispatchEvent(new Event('change', { bubbles: true }));
+      // 收起所有展开的卡片，并去掉高亮/入场动画残留
+      document.querySelectorAll('#feed .card.is-open').forEach(c => c.click());
+      document.querySelectorAll('#feed .card.is-flash, #feed .card.is-new')
+        .forEach(c => c.classList.remove('is-flash', 'is-new'));
+      document.getElementById('feed').scrollTop = 0;
+      return true;
+    })()`);
+    await wait(900);
+
+    // 2) 主界面：挑一个摘要有信息量的分类。
+    //    「全部 + 最新排序」以及「国内资讯」的头条都会被 InfoQ 占据 ——
+    //    它的 RSS 不提供摘要，界面连续显示「暂无摘要」，作展示图效果很差。
+    //    因此先统计各分类最近若干条里有多少带摘要，选最好的那个来截。
+    const picks = await run(`(() => {
+      const out = {};
+      const cats = ['all', 'papers', 'cn', 'global', 'community', 'opensource', 'deepseek'];
+      const show = (cat) => {
+        if (cat === 'all') document.getElementById('btnShowAll')?.click();
+        else document.querySelector('[data-category="' + cat + '"]')?.click();
+      };
+      for (const c of cats) {
+        show(c);
+        const cards = Array.from(document.querySelectorAll('#feed .card')).slice(0, 8);
+        const withSummary = cards.filter(el => {
+          const s = el.querySelector('.card__summary');
+          return s && !s.classList.contains('is-empty') && (s.textContent || '').trim().length > 40;
+        }).length;
+        out[c] = { shown: cards.length, withSummary };
+      }
+      return out;
+    })()`);
+    report.categorySummaryQuality = picks;
+
+    // 选摘要最丰富的分类；「all」在并列时优先（能体现多源聚合）
+    let best = 'all';
+    let bestScore = -1;
+    for (const [cat, v] of Object.entries(picks || {})) {
+      const score = v.withSummary + (cat === 'all' ? 0.5 : 0);
+      if (score > bestScore) { bestScore = score; best = cat; }
+    }
+    await run(`(() => {
+      ${best === 'all'
+        ? "document.getElementById('btnShowAll')?.click();"
+        : `document.querySelector('[data-category="${best}"]')?.click();`}
+      document.getElementById('feed').scrollTop = 0;
+      return true;
+    })()`);
+    await wait(900);
+    await capture('demo-main');
+    report.showcase = report.showcase || [];
+    report.showcase.push(`demo-main（分类=${best}，摘要条数=${bestScore}）`);
+
+    // 3) DeepSeek 专区：本项目的特色分类
+    await run(`(() => {
+      document.querySelector('[data-category="deepseek"]')?.click();
+      document.getElementById('feed').scrollTop = 0;
+      return true;
+    })()`);
+    await wait(900);
+    await capture('demo-deepseek');
+    report.showcase.push('demo-deepseek（DeepSeek 专区）');
+
+    // 4) 回到全部视图，再截设置面板
+    await run(`(() => {
+      document.getElementById('btnShowAll')?.click();
+      document.getElementById('btnSettings').click();
+      return true;
+    })()`);
+    await wait(900);
+    await capture('demo-settings');
+    report.showcase.push('demo-settings（设置面板）');
+
+    await run(`(() => { document.getElementById('settingsModal').hidden = true; return true; })()`);
+    await wait(300);
+
+    // 5) 记录每张演示图里实际渲染的卡片数，避免截出空列表还不知道
+    const counts = await run(`(() => {
+      const out = {};
+      out.all = document.querySelectorAll('#feed .card').length;
+      return out;
+    })()`);
+    report.showcaseCardCount = counts ? counts.all : null;
+    console.log(`[smoke] 演示截图完成，当前列表卡片数=${report.showcaseCardCount}`);
+  }
+
   async function finish(reason) {
     const snap = scheduler.snapshot();
     report.itemCount = snap.items.length;
@@ -391,6 +514,11 @@ function install({ app, window, scheduler, store }) {
 
       // 真实操作一遍核心交互功能
       await exerciseUi();
+
+      // 演示截图：把界面恢复成干净状态后重新截图，用于 README 展示
+      if (isDemo()) {
+        await captureShowcase();
+      }
 
       await finish('completed');
 

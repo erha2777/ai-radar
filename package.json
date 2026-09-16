@@ -15,6 +15,7 @@
     "test": "node test/run-tests.mjs",
     "test:live": "node test/run-tests.mjs --live",
     "smoke": "node scripts/smoke-test.js",
+    "screenshots": "node scripts/make-screenshots.js",
     "prebuild-check": "node scripts/prebuild-check.js",
     "build": "node scripts/prebuild-check.js && node scripts/make-icons.js && electron-builder --win --x64 --publish never",
     "build:force": "node scripts/prebuild-check.js --kill && node scripts/make-icons.js && electron-builder --win --x64 --publish never",

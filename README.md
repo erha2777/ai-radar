@@ -10,6 +10,25 @@
 
 ---
 
+## 界面预览
+
+主界面（论文分类）：左侧为分类与数据源开关，卡片显示来源、热度、arXiv 标记与摘要。
+
+![主界面](screenshots/demo-main.png)
+
+DeepSeek 专区：3 个专属源聚合官方模型发布、专题报道与生态项目。
+
+![DeepSeek 专区](screenshots/demo-deepseek.png)
+
+设置面板：抓取间隔、通知阈值、关注关键词、窗口行为，以及每个数据源的实时状态。
+
+![设置面板](screenshots/demo-settings.png)
+
+> 截图由 `npm run screenshots` 自动生成（见「开发与测试」一节），
+> 脚本会先把界面复位成干净状态再截图，避免带上测试过程的痕迹。
+
+---
+
 ## 一、快速开始
 
 ### 方式 A：下载打包好的程序（推荐）
@@ -200,14 +219,21 @@ project/
 ## 五、开发与测试
 
 ```bash
-npm test              # 离线单元测试（解析器 / 去重 / 摘要识别 / 配置存储）
+npm test              # 离线单元测试（解析器 / 去重 / 摘要识别 / 收藏 / 配置存储）
 npm run test:live     # 额外实测全部真实数据源
 npm run smoke         # 启动应用，抓取完成后自动截图 + 输出诊断报告到 .smoke/
+npm run screenshots   # 生成 README 用的演示截图（输出到 screenshots/）
 npm start             # 正常运行
 npm run dev           # 带控制台日志运行
 npm run build         # 打包出 Windows 安装包与免安装版
 npm run build:force   # 同上，但先自动结束正在运行的应用实例
 ```
+
+`npm run screenshots` 与 `npm run smoke` 的区别：冒烟测试截的是**测试过程**的画面
+（排序停在最热、卡片带高亮边框、分类停在最后点过的那个），不适合当展示图；
+截图脚本会先把界面复位成干净状态，并且**按各分类摘要的信息量自动挑选**截图所用的
+分类——因为「全部 + 最新」的头条常被 InfoQ 占据，而它的 RSS 不提供摘要，
+连续显示「暂无摘要」作展示图效果很差。
 
 **打包前请先退出正在运行的 AI Radar**。应用运行时会锁住 `dist` 里的 `app.asar` 与 exe，
 此时打包会失败并报出难以理解的底层错误（`The process cannot access the file` /
